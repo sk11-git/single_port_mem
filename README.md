@@ -2,6 +2,32 @@
 
 A comprehensive UVM-inspired verification environment for a single-port memory module implemented in SystemVerilog.
 
+## 🚀 Quick Start
+
+To run the verification immediately, just execute these commands:
+
+```bash
+# Clone the repository
+git clone https://github.com/sk11-git/single_port_mem.git
+cd single_port_mem
+
+# Navigate to simulation directory
+cd sim/
+
+# Run tests (choose one)
+make all TEST=random      # Run 500 random operations
+make all TEST=write       # Run 256 write operations
+make all TEST=read        # Run 128 writes + 256 reads
+make all TEST=stress      # Run 1000 stress operations
+
+# Optional: View waveforms
+make sim-dump TEST=random
+```
+
+That's it! The simulation will run and display results.
+
+---
+
 ## Directory Structure
 
 ```
@@ -96,18 +122,22 @@ single_port_mem/
 ### 1. **Random Test** (`single_port_mem_random_test.sv`)
 - Executes 500 random read/write transactions
 - Good for general coverage and stress testing
+- Run: `make all TEST=random`
 
 ### 2. **Write Test** (`single_port_mem_write_test.sv`)
 - Executes 256 sequential write operations
 - Verifies write functionality with address and data variations
+- Run: `make all TEST=write`
 
 ### 3. **Read Test** (`single_port_mem_read_test.sv`)
 - Executes 128 writes followed by 256 reads
 - Verifies correct read-back of written data
+- Run: `make all TEST=read`
 
 ### 4. **Stress Test** (`single_port_mem_stress_test.sv`)
 - Executes 1000 random operations
 - Tests memory under high transaction rates
+- Run: `make all TEST=stress`
 
 ## Running Simulations
 
@@ -115,53 +145,65 @@ single_port_mem/
 - SystemVerilog simulator (ModelSim, QuestaSim, VCS, or Xsim)
 - Verilog compiler
 
-### Basic Commands
+### All Available Commands
 
 ```bash
-# Navigate to simulation directory
 cd sim/
 
-# Show help
+# Show help menu
 make help
 
 # Run default (random) test
 make all
 
-# Run specific test
-make all TEST=write
-make all TEST=read
-make all TEST=stress
+# Run specific test - CHOOSE ONE:
+make all TEST=random      # 500 random operations
+make all TEST=write       # 256 write operations
+make all TEST=read        # 128 writes + 256 reads
+make all TEST=stress      # 1000 stress operations
 
-# Compile only
+# Compile only (without running)
 make compile
 
-# Run simulation (if already compiled)
+# Run simulation with already compiled files
 make sim TEST=random
 
-# Run with waveform dump
+# Run with waveform dump (creates spm_sim.vcd)
 make sim-dump TEST=random
 
-# Clean generated files
+# Clean all generated files
 make clean
 ```
 
-### Example Simulation Runs
+### Quick Examples
 
+**Example 1: Run Random Test**
 ```bash
-# Random test with 500 transactions
+cd sim/
 make all TEST=random
+```
 
-# Write test - 256 write operations
+**Example 2: Run Write Test with Waveform**
+```bash
+cd sim/
+make sim-dump TEST=write
+gtkwave spm_sim.vcd &
+```
+
+**Example 3: Run All Tests Sequentially**
+```bash
+cd sim/
+make all TEST=random
 make all TEST=write
-
-# Read test - 128 writes + 256 reads
 make all TEST=read
-
-# Stress test - 1000 operations
 make all TEST=stress
+```
 
-# With waveform capture for viewing in waveform viewer
-make sim-dump TEST=random
+**Example 4: Clean and Re-run**
+```bash
+cd sim/
+make clean
+make all TEST=random
 ```
 
 ## Waveform Viewing

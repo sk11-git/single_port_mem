@@ -1,79 +1,38 @@
 /**
  * Single Port Memory Environment
- * Combines all verification components
+ * Combines all UVM components
  */
 
-class single_port_mem_env;
+class single_port_mem_env extends uvm_env;
+    `uvm_component_utils(single_port_mem_env)
     
-    single_port_mem_config cfg;
-    single_port_mem_generator gen;
-    single_port_mem_driver drv;
-    single_port_mem_monitor mon;
-    single_port_mem_scoreboard sb;
+    single_port_mem_agent agent;
+    single_port_mem_scoreboard scoreboard;
     
-    virtual single_port_mem_if vif;
-    
-    mailbox gen2drv;
-    mailbox mon2sb;
-    
-    // Constructor
-    function new(virtual single_port_mem_if vif, single_port_mem_config cfg);
-        this.vif = vif;
-        this.cfg = cfg;
-        
-        // Create mailboxes
-        gen2drv = new();
-        mon2sb = new();
-        
-        // Create components
-        gen = new(gen2drv, cfg, cfg.num_random_ops);
-        drv = new(vif, gen2drv, cfg.addr_width, cfg.data_width);
-        mon = new(vif, mon2sb, cfg.addr_width, cfg.data_width);
-        sb = new(mon2sb);
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
     endfunction
     
-    // Build environment
-    function void build();
-        $display("[ENV] Building environment...");
-        cfg.print_config();
+    virtual function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        
+        agent = single_port_mem_agent::type_id::create("agent", this);
+        scoreboard = single_port_mem_scoreboard::type_id::create("scoreboard", this);
+        
+        `uvm_info(get_type_name(), "Environment built", UVM_MEDIUM)
     endfunction
     
-    // Connect environment
-    function void connect();
-        $display("[ENV] Connecting components...");
+    virtual function void connect_phase(uvm_phase phase);
+        super.connect_phase(phase);
+        
+        agent.item_collected_port.connect(scoreboard.analysis_export);
+        
+        `uvm_info(get_type_name(), "Environment connected", UVM_MEDIUM)
     endfunction
     
-    // Run environment
-    task run();
-        $display("[ENV] Starting environment...");
-        
-        fork
-            gen.run();
-            drv.run();
-            mon.run();
-            sb.run();
-        join_none
-    endtask
-    
-    // Wait for all transactions to complete
-    task wait_for_completion();
-        int timeout = 100000;  // cycles
-        int cycles = 0;
-        
-        $display("[ENV] Waiting for test completion...");
-        
-        while (cycles < timeout && (gen2drv.num() > 0 || mon2sb.num() > 0)) begin
-            @(posedge vif.clk);
-            cycles++;
-        end
-        
-        $display("[ENV] Test completed in %0d cycles", cycles);
-    endtask
-    
-    // Cleanup
-    task cleanup();
-        $display("[ENV] Cleaning up...");
-        sb.print_statistics();
-    endtask
+    virtual function void end_of_elaboration_phase(uvm_phase phase);
+        super.end_of_elaboration_phase(phase);
+        `uvm_info(get_type_name(), "Environment elaborated", UVM_MEDIUM)
+    endfunction
     
 endclass

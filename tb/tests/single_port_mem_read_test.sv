@@ -1,30 +1,34 @@
 /**
- * Single Port Memory Read Test
- * Tests read operations from memory
+ * Single Port Memory Read Test - UVM
+ * Runs write then read sequences
  */
 
 class single_port_mem_read_test extends single_port_mem_base_test;
+    `uvm_component_utils(single_port_mem_read_test)
     
-    function new(virtual single_port_mem_if vif);
-        super.new(vif);
-        cfg.num_reads = 256;
-        cfg.num_writes = 128;
-        cfg.num_random_ops = cfg.num_writes + cfg.num_reads;
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
     endfunction
     
-    task setup();
-        $display("\n========== READ TEST SETUP ==========");
-        super.setup();
-        $display("Configuration:");
-        $display("  - Memory Size: %0d locations", 2**cfg.addr_width);
-        $display("  - Data Width: %0d bits", cfg.data_width);
-        $display("  - Write Operations: %0d", cfg.num_writes);
-        $display("  - Read Operations: %0d", cfg.num_reads);
-    endtask
-    
-    task run();
-        $display("\n========== READ TEST RUN ==========");
-        super.run();
+    virtual task run_phase(uvm_phase phase);
+        single_port_mem_write_sequence write_seq;
+        single_port_mem_read_sequence read_seq;
+        
+        `uvm_info(get_type_name(), $sformatf("\n========== READ TEST =========="), UVM_MEDIUM)
+        
+        phase.raise_objection(this);
+        
+        // First: Write data
+        write_seq = single_port_mem_write_sequence::type_id::create("write_seq");
+        write_seq.num_items = 128;
+        write_seq.start(env.agent.sequencer);
+        
+        // Then: Read data
+        read_seq = single_port_mem_read_sequence::type_id::create("read_seq");
+        read_seq.num_items = 128;
+        read_seq.start(env.agent.sequencer);
+        
+        phase.drop_objection(this);
     endtask
     
 endclass

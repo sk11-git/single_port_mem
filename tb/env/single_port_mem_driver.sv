@@ -1,37 +1,33 @@
 /**
  * Single Port Memory Driver
- * Responsible for driving stimulus to the DUT
+ * Drives transactions to DUT
  */
 
-class single_port_mem_driver;
+class single_port_mem_driver extends uvm_driver #(single_port_mem_transaction);
+    `uvm_component_utils(single_port_mem_driver)
     
     virtual single_port_mem_if vif;
-    mailbox gen2drv;
     
-    int addr_width;
-    int data_width;
-    
-    function new(virtual single_port_mem_if vif, mailbox gen2drv, int addr_width, int data_width);
-        this.vif = vif;
-        this.gen2drv = gen2drv;
-        this.addr_width = addr_width;
-        this.data_width = data_width;
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
     endfunction
     
-    // Main driver loop
-    task run();
-        single_port_mem_transaction tr;
-        
-        $display("[DRIVER] Starting driver...");
+    virtual function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        `uvm_info(get_type_name(), "Driver built", UVM_MEDIUM)
+    endfunction
+    
+    virtual task run_phase(uvm_phase phase);
+        `uvm_info(get_type_name(), "Driver run_phase started", UVM_MEDIUM)
         
         forever begin
-            gen2drv.get(tr);
-            drive_transaction(tr);
+            seq_item_port.get_next_item(req);
+            drive_transaction(req);
+            seq_item_port.item_done();
         end
     endtask
     
-    // Drive a single transaction
-    task drive_transaction(single_port_mem_transaction tr);
+    virtual task drive_transaction(single_port_mem_transaction tr);
         @(posedge vif.clk);
         
         vif.wr_en <= tr.wr_en;
@@ -39,9 +35,9 @@ class single_port_mem_driver;
         vif.wr_data <= tr.wr_data;
         
         if (tr.wr_en) begin
-            $display("[DRIVER] Writing to addr=0x%0h, data=0x%0h", tr.addr, tr.wr_data);
+            `uvm_info(get_type_name(), $sformatf("WRITE: addr=0x%0h data=0x%0h", tr.addr, tr.wr_data), UVM_LOW)
         end else begin
-            $display("[DRIVER] Reading from addr=0x%0h", tr.addr);
+            `uvm_info(get_type_name(), $sformatf("READ: addr=0x%0h", tr.addr), UVM_LOW)
         end
     endtask
     

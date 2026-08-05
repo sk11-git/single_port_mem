@@ -1,47 +1,38 @@
 /**
- * Single Port Memory Base Test
- * Base class for all SPM tests
+ * Single Port Memory UVM Test Base
+ * Base test class for all UVM tests
  */
 
-class single_port_mem_base_test;
+class single_port_mem_base_test extends uvm_test;
+    `uvm_component_utils(single_port_mem_base_test)
     
     single_port_mem_env env;
-    single_port_mem_config cfg;
     
-    // Virtual interface
-    virtual single_port_mem_if vif;
-    
-    function new(virtual single_port_mem_if vif);
-        this.vif = vif;
-        cfg = new();
-        env = new(vif, cfg);
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
     endfunction
     
-    // Setup test
-    virtual task setup();
-        $display("\n========== TEST SETUP ==========");
-        env.build();
-        env.connect();
+    virtual function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        
+        env = single_port_mem_env::type_id::create("env", this);
+        
+        `uvm_info(get_type_name(), "Test built", UVM_MEDIUM)
+    endfunction
+    
+    virtual function void end_of_elaboration_phase(uvm_phase phase);
+        super.end_of_elaboration_phase(phase);
+        `uvm_info(get_type_name(), $sformatf("\n========== Test: %s ==========", get_type_name()), UVM_MEDIUM)
+        uvm_top.print_topology();
+    endfunction
+    
+    virtual task run_phase(uvm_phase phase);
+        `uvm_info(get_type_name(), "Test run_phase started", UVM_MEDIUM)
     endtask
     
-    // Run test
-    virtual task run();
-        $display("\n========== TEST RUN ==========");
-        env.run();
-        env.wait_for_completion();
-    endtask
-    
-    // Teardown test
-    virtual task teardown();
-        $display("\n========== TEST TEARDOWN ==========");
-        env.cleanup();
-    endtask
-    
-    // Execute test
-    task execute();
-        setup();
-        run();
-        teardown();
-    endtask
+    virtual function void report_phase(uvm_phase phase);
+        super.report_phase(phase);
+        `uvm_info(get_type_name(), "Test completed", UVM_MEDIUM)
+    endfunction
     
 endclass

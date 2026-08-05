@@ -7,8 +7,8 @@ class single_port_mem_agent extends uvm_agent;
     `uvm_component_utils(single_port_mem_agent)
     
     single_port_mem_sequencer sequencer;
-    single_port_mem_driver_uvm driver;
-    single_port_mem_monitor_uvm monitor;
+    single_port_mem_driver driver;
+    single_port_mem_monitor monitor;
     
     virtual single_port_mem_if vif;
     
@@ -26,8 +26,8 @@ class single_port_mem_agent extends uvm_agent;
             `uvm_fatal(get_type_name(), "Virtual interface not found")
         
         sequencer = single_port_mem_sequencer::type_id::create("sequencer", this);
-        driver = single_port_mem_driver_uvm::type_id::create("driver", this);
-        monitor = single_port_mem_monitor_uvm::type_id::create("monitor", this);
+        driver = single_port_mem_driver::type_id::create("driver", this);
+        monitor = single_port_mem_monitor::type_id::create("monitor", this);
         
         `uvm_info(get_type_name(), "Agent built", UVM_MEDIUM)
     endfunction

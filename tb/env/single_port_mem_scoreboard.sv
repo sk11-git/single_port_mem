@@ -1,99 +1,75 @@
 /**
  * Single Port Memory Scoreboard
- * Checks expected vs actual behavior
+ * Verifies correctness of memory operations
  */
 
-class single_port_mem_scoreboard;
+class single_port_mem_scoreboard extends uvm_scoreboard;
+    `uvm_component_utils(single_port_mem_scoreboard)
     
-    mailbox mon2sb;
+    uvm_analysis_imp #(single_port_mem_transaction, single_port_mem_scoreboard) analysis_export;
     
     // Memory model
-    associative array bit [63:0] mem_model [logic [63:0]];
+    bit [63:0] mem_model[logic [63:0]];
     
     // Statistics
-    int num_writes = 0;
-    int num_reads = 0;
-    int num_errors = 0;
-    int num_matches = 0;
+    int unsigned num_writes = 0;
+    int unsigned num_reads = 0;
+    int unsigned num_errors = 0;
+    int unsigned num_matches = 0;
     
-    // Track pending writes for synchronization
-    logic [63:0] last_written_addr;
-    logic [63:0] last_written_data;
-    int write_pending = 0;
-    
-    function new(mailbox mon2sb);
-        this.mon2sb = mon2sb;
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
+        analysis_export = new("analysis_export", this);
     endfunction
     
-    // Main scoreboard loop
-    task run();
-        single_port_mem_transaction tr;
-        
-        $display("[SCOREBOARD] Starting scoreboard...");
-        
-        forever begin
-            mon2sb.get(tr);
-            check_transaction(tr);
-        end
-    endtask
+    virtual function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        `uvm_info(get_type_name(), "Scoreboard built", UVM_MEDIUM)
+    endfunction
     
-    // Check a transaction
-    task check_transaction(single_port_mem_transaction tr);
-        bit error = 1'b0;
-        logic [63:0] expected_data;
+    virtual function void write(single_port_mem_transaction tr);
+        bit [63:0] expected_data;
         
         if (tr.wr_en) begin
-            // Write operation - update model
+            // Write operation
             mem_model[tr.addr] = tr.wr_data;
-            last_written_addr = tr.addr;
-            last_written_data = tr.wr_data;
-            write_pending = 1;
             num_writes++;
-            
-            $display("[SCOREBOARD] WRITE  >> addr=0x%0h data=0x%0h", tr.addr, tr.wr_data);
+            `uvm_info(get_type_name(), $sformatf("WRITE: addr=0x%0h data=0x%0h", tr.addr, tr.wr_data), UVM_LOW)
         end else begin
-            // Read operation - check against model
+            // Read operation
             num_reads++;
             
-            // For read immediately after write to same address, data is old
-            // (since write is synchronous, read shows previous value)
             if (mem_model.exists(tr.addr)) begin
                 expected_data = mem_model[tr.addr];
             end else begin
-                expected_data = '0;  // Uninitialized memory reads as 0
+                expected_data = '0;
             end
             
             if (tr.rd_data === expected_data) begin
-                $display("[SCOREBOARD] READ OK >> addr=0x%0h expected=0x%0h got=0x%0h", 
-                         tr.addr, expected_data, tr.rd_data);
+                `uvm_info(get_type_name(), $sformatf("READ OK: addr=0x%0h expected=0x%0h got=0x%0h", tr.addr, expected_data, tr.rd_data), UVM_LOW)
                 num_matches++;
             end else begin
-                $display("[SCOREBOARD] ERROR   >> addr=0x%0h expected=0x%0h got=0x%0h", 
-                         tr.addr, expected_data, tr.rd_data);
-                error = 1'b1;
+                `uvm_error(get_type_name(), $sformatf("READ ERROR: addr=0x%0h expected=0x%0h got=0x%0h", tr.addr, expected_data, tr.rd_data))
                 num_errors++;
             end
         end
-        
-        write_pending = 0;
-    endtask
+    endfunction
     
-    // Print statistics
-    function void print_statistics();
-        $display("\n");
-        $display("=========== SCOREBOARD STATISTICS ===========");
-        $display("Total Writes    : %0d", num_writes);
-        $display("Total Reads     : %0d", num_reads);
-        $display("Matched Reads   : %0d", num_matches);
-        $display("Mismatched Reads: %0d", num_errors);
-        $display("============================================");
+    virtual function void report_phase(uvm_phase phase);
+        super.report_phase(phase);
+        
+        `uvm_info(get_type_name(), $sformatf("\n================== SCOREBOARD REPORT ==================", ), UVM_LOW)
+        `uvm_info(get_type_name(), $sformatf("Total Writes    : %0d", num_writes), UVM_LOW)
+        `uvm_info(get_type_name(), $sformatf("Total Reads     : %0d", num_reads), UVM_LOW)
+        `uvm_info(get_type_name(), $sformatf("Matched Reads   : %0d", num_matches), UVM_LOW)
+        `uvm_info(get_type_name(), $sformatf("Mismatched Reads: %0d", num_errors), UVM_LOW)
+        `uvm_info(get_type_name(), $sformatf("========================================================", ), UVM_LOW)
         
         if (num_errors == 0 && (num_writes + num_reads) > 0) begin
-            $display("           *** TEST PASSED ***");
+            `uvm_info(get_type_name(), "*** TEST PASSED ***", UVM_LOW)
         end else if (num_errors > 0) begin
-            $display("           *** TEST FAILED ***");
+            `uvm_error(get_type_name(), "*** TEST FAILED ***")
         end
-        $display("\n");
     endfunction
     
 endclass

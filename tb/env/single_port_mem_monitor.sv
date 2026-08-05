@@ -1,57 +1,49 @@
 /**
  * Single Port Memory Monitor
- * Observes and collects transactions from the DUT
+ * Collects transactions from interface
  */
 
-class single_port_mem_monitor;
+class single_port_mem_monitor extends uvm_monitor;
+    `uvm_component_utils(single_port_mem_monitor)
     
     virtual single_port_mem_if vif;
-    mailbox mon2sb;
+    uvm_analysis_port #(single_port_mem_transaction) item_collected_port;
     
-    int addr_width;
-    int data_width;
-    int num_transactions;
+    single_port_mem_transaction collected_item;
+    int num_collected = 0;
     
-    function new(virtual single_port_mem_if vif, mailbox mon2sb, int addr_width, int data_width);
-        this.vif = vif;
-        this.mon2sb = mon2sb;
-        this.addr_width = addr_width;
-        this.data_width = data_width;
-        this.num_transactions = 0;
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
+        item_collected_port = new("item_collected_port", this);
     endfunction
     
-    // Main monitor loop
-    task run();
-        $display("[MONITOR] Starting monitor...");
+    virtual function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+        `uvm_info(get_type_name(), "Monitor built", UVM_MEDIUM)
+    endfunction
+    
+    virtual task run_phase(uvm_phase phase);
+        `uvm_info(get_type_name(), "Monitor run_phase started", UVM_MEDIUM)
         
         forever begin
             collect_transaction();
         end
     endtask
     
-    // Collect a transaction
-    task collect_transaction();
-        single_port_mem_transaction tr;
-        
+    virtual task collect_transaction();
         @(posedge vif.clk);
         
-        tr = new();
-        tr.wr_en = vif.wr_en;
-        tr.addr = vif.addr;
-        tr.wr_data = vif.wr_data;
-        tr.rd_data = vif.rd_data;
-        tr.timestamp = $time;
+        collected_item = single_port_mem_transaction::type_id::create("collected_item");
+        collected_item.wr_en = vif.wr_en;
+        collected_item.addr = vif.addr;
+        collected_item.wr_data = vif.wr_data;
+        collected_item.rd_data = vif.rd_data;
+        collected_item.timestamp = $time;
         
-        mon2sb.put(tr);
-        num_transactions++;
+        item_collected_port.write(collected_item);
+        num_collected++;
         
-        $display("[MONITOR] Transaction #%0d: wr_en=%b, addr=0x%0h, wr_data=0x%0h, rd_data=0x%0h @ %0t",
-                 num_transactions, tr.wr_en, tr.addr, tr.wr_data, tr.rd_data, tr.timestamp);
+        `uvm_info(get_type_name(), $sformatf("Collected %0d: %s", num_collected, collected_item.convert2string()), UVM_LOW)
     endtask
-    
-    // Get transaction count
-    function int get_num_transactions();
-        return num_transactions;
-    endfunction
     
 endclass
